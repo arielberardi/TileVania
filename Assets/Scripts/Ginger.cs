@@ -6,28 +6,74 @@ using UnityEngine.InputSystem;
 public class Ginger : MonoBehaviour
 {
     [SerializeField] float _speed = 5.0f;
+    [SerializeField] float _jumpSpeed = 2.5f;
+    [SerializeField] float _climbSpeed = 5.0f;
     
     Vector2 _moveInput = Vector2.zero;
-    Rigidbody2D _rigidBody2D;
+    Rigidbody2D _rigidBody2d;
+    Animator _animator;
+    CapsuleCollider2D _capsuleCollider2d;
     
+    float _gravityScaleStart = 1.0f;
+
     void Start()
     {
-        _rigidBody2D = GetComponent<Rigidbody2D>();
+        _rigidBody2d = GetComponent<Rigidbody2D>();
+        _animator = GetComponent<Animator>();
+        _capsuleCollider2d = GetComponent<CapsuleCollider2D>();
+        
+        _gravityScaleStart = _rigidBody2d.gravityScale;
     }
 
     void Update()
     {
-        _rigidBody2D.velocity = new Vector2(_moveInput.x * _speed, _rigidBody2D.velocity.y);    
+        _rigidBody2d.velocity = new Vector2(_moveInput.x * _speed, _rigidBody2d.velocity.y);    
         
         // Is Player Running
-        if (Mathf.Abs(_rigidBody2D.velocity.x) > Mathf.Epsilon)
+        if (Mathf.Abs(_rigidBody2d.velocity.x) > Mathf.Epsilon)
         {
-            transform.localScale = new Vector2(Mathf.Sign(_rigidBody2D.velocity.x), 1f);
+            transform.localScale = new Vector2(Mathf.Sign(_rigidBody2d.velocity.x), 1f);
+            _animator.SetBool("isRunning", true);
+        }
+        else 
+        {
+            _animator.SetBool("isRunning", false);    
+        }
+        
+        // Is Player Climbing
+        if (_capsuleCollider2d.IsTouchingLayers(LayerMask.GetMask("Ladder")))
+        {
+            _rigidBody2d.velocity = new Vector2(_rigidBody2d.velocity.x, _moveInput.y * _climbSpeed);    
+            _rigidBody2d.gravityScale = 0;  
+            
+            if (_rigidBody2d.velocity.y > Mathf.Epsilon)
+            {
+                _animator.SetBool("isClimbing", true);
+            }
+            else 
+            {
+                _animator.SetBool("isClimbing", false);
+            }
+        }
+        else 
+        {
+            if (_rigidBody2d.gravityScale != _gravityScaleStart)
+            {
+                _rigidBody2d.gravityScale = _gravityScaleStart;
+            }
         }
     }
         
     void OnMove(InputValue value)
     {
         _moveInput = value.Get<Vector2>();
+    }
+        
+    void OnJump(InputValue value)
+    {
+        if(value.isPressed && _capsuleCollider2d.IsTouchingLayers(LayerMask.GetMask("Ground")))
+        {
+            _rigidBody2d.velocity += new Vector2(0f, _jumpSpeed);
+        }
     }
 }
